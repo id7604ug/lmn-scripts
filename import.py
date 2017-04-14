@@ -32,7 +32,7 @@ def mplsconcerts():
 
 # Returns a list of all artists on First Avenue's calendar
 # TODO artists are tricky- sometimes they have extra information that can't be reliably parsed out
-# (Featuring, Tours, Release Party, etc.) In this case they have to be parsed out one by one (sorry)
+# (Featuring, Tours, Release Party, etc.) In this case they have to be parsed one by one
 def get_artists_firstave():
     url = "http://first-avenue.com/calendar"
     f = urllib.request.urlopen(url)
@@ -48,7 +48,7 @@ def get_artists_firstave():
     return artists
 
 
-# Returns the indexes of the canceled shows, which are kept on the page for some odd reason
+# Returns the indexes of the canceled shows, which are kept on the page for some reason
 def get_canceled_firstave():
     url = "http://first-avenue.com/calendar"
     f = urllib.request.urlopen(url)
@@ -97,28 +97,33 @@ def main():
     # lmn_venue: id, name, city, state
     artists = get_artists_firstave()
     venues = get_venues_firstave()
+    clean_venues = []
+
+    for x in range(len(venues)):
+        if venues[x] not in clean_venues:
+            clean_venues.append(venues[x])
 
     try:
         conn = psycopg2.connect("dbname='lmnop' user='lmnop' host='localhost' password=" + os.environ['POSTGRES_LMNOP_USER_PASSWORD'])
         conn.autocommit = True
         cur = conn.cursor()
 
-        # for x in range(len(artists)):
-        #     cur.execute("INSERT INTO lmn_artist (name) VALUES (%s)", (artists[x],))
-        # print("Artists added successfully")
+        for x in range(len(artists)):
+            cur.execute("INSERT INTO lmn_artist (name) VALUES (%s)", (artists[x],))
+        print("Artists added successfully")
 
-        for y in range(len(venues)):
-            cur.execute("SELECT name FROM lmn_venue WHERE name=%s", (venues[y][0],))
-            # TODO should work but gives error
-            if cur.fetchOne() is not None:
-                SQL = "INSERT INTO lmn_venue (name, city, state) VALUES (%s, %s, %s)"
-                data = (venues[y][0], venues[y][1], "MN")
-                cur.execute(SQL, data)
+        for y in range(len(clean_venues)):
+
+            SQL = "INSERT INTO lmn_venue (name, city, state) VALUES (%s, %s, %s)"
+            data = (clean_venues[y][0], clean_venues[y][1], "MN")
+            cur.execute(SQL, data)
+
         print("Venues added successfully")
 
     except Exception as e:
         print("Error: " + str(e))
 
 
+# Run this once the postgres server is running to add current artists & shows to database
 if __name__ == '__main__':
     main()
