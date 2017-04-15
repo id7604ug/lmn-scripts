@@ -92,33 +92,69 @@ def get_venues_firstave():
     return venues
 
 
+def get_show_dates():
+    url = "http://first-avenue.com/calendar"
+    f = urllib.request.urlopen(url)
+    soup = BeautifulSoup(f, 'html.parser')
+    dates = []
+    # All dates and times of shows on the page are in the same class
+    for a in soup.find_all("span", class_="date-display-single"):
+        dates.append(a.text)
+
+    return dates
+
+
 def main():
-    # lmn_artist: id, name
-    # lmn_venue: id, name, city, state
+    show_dates = get_show_dates()
     artists = get_artists_firstave()
     venues = get_venues_firstave()
     clean_venues = []
 
-    for x in range(len(venues)):
-        if venues[x] not in clean_venues:
-            clean_venues.append(venues[x])
+    # A list of non-repeating venues
+    for a in range(len(venues)):
+        if venues[a] not in clean_venues:
+            clean_venues.append(venues[a])
 
     try:
         conn = psycopg2.connect("dbname='lmnop' user='lmnop' host='localhost' password=" + os.environ['POSTGRES_LMNOP_USER_PASSWORD'])
         conn.autocommit = True
         cur = conn.cursor()
 
+        # Add artists to database table lmn_artist
         for x in range(len(artists)):
-            cur.execute("INSERT INTO lmn_artist (name) VALUES (%s)", (artists[x],))
+            SQL = "INSERT INTO lmn_artist (name) VALUES (%s)"
+            data = (artists[x],)
+            cur.execute(SQL, data)
+
         print("Artists added successfully")
 
+        # Add venues to database table lmn_venue
         for y in range(len(clean_venues)):
-
             SQL = "INSERT INTO lmn_venue (name, city, state) VALUES (%s, %s, %s)"
             data = (clean_venues[y][0], clean_venues[y][1], "MN")
             cur.execute(SQL, data)
 
         print("Venues added successfully")
+
+        # Combine artists & venues to create shows in database table lmn_show
+        cur.execute("SELECT id FROM lmn_artist WHERE name=%s", (artists[0],))   # Starting point: artists we just added
+        start = cur.fetchone()
+        for z in range(len(show_dates)):
+            if ("pm" not in show_dates[z]) or ("am" not in show_dates[z]):
+                date = show_dates[z]
+            else:
+                # When we reach else, date is labeled a day and the next value in show_dates is a time, thus date + time
+                datetime = date + " " + show_dates[z]
+                artistId = start[0] + z
+                venueName = venues[z][0]
+                cur.execute("SELECT id FROM lmn_venue WHERE name=%s", (venueName,))
+                venueId = cur.fetchone()
+
+                SQL = ("INSERT INTO lmn_show (show_date, artist_id, venue_id) VALUES (%s, %s, %s)")
+                data = (datetime, artistId, venueId)
+                cur.execute(SQL, data)
+
+        print("Shows added successfully.\nImport complete.")
 
     except Exception as e:
         print("Error: " + str(e))
