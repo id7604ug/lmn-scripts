@@ -103,6 +103,21 @@ def get_show_dates():
 
     return dates
 
+# Function to check if artist exists
+# Inspired by http://stackoverflow.com/questions/20449048/python-psycopg2-check-row-exists
+def artist_exists(name, conn):
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM lmn_artist WHERE name=%s", (name,))
+        # Returns true if name was not found
+        return cur.fetchone() is not None
+
+# Function to check if venu exists
+def venue_exists(venue, conn):
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM lmn_venue WHERE name=%s", (venue[0],))
+        # Return true if name was not found
+        return cur.fetchone() is not None
+
 
 def main():
     show_dates = get_show_dates()
@@ -116,23 +131,25 @@ def main():
             clean_venues.append(venues[a])
 
     try:
-        conn = psycopg2.connect("dbname='lmnop' user='lmnop' host='localhost' password=" + os.environ['POSTGRES_LMNOP_USER_PASSWORD'])
+        conn = psycopg2.connect("dbname=" + os.environ['POSTGRES_LMNOP_DATABASE'] + " user='lmnop' host=" = os.environ['POSTGRES_LMNOP_HOST'] + " password=" + os.environ['POSTGRES_LMNOP_USER_PASSWORD'])
         conn.autocommit = True
         cur = conn.cursor()
 
         # Add artists to database table lmn_artist
         for x in range(len(artists)):
-            SQL = "INSERT INTO lmn_artist (name) VALUES (%s)"
-            data = (artists[x],)
-            cur.execute(SQL, data)
+            if not artist_exists(artists[x], conn):
+                SQL = "INSERT INTO lmn_artist (name) VALUES (%s)"
+                data = (str(artists[x]),)
+                cur.execute(SQL, data)
 
         print("Artists added successfully")
 
         # Add venues to database table lmn_venue
         for y in range(len(clean_venues)):
-            SQL = "INSERT INTO lmn_venue (name, city, state) VALUES (%s, %s, %s)"
-            data = (clean_venues[y][0], clean_venues[y][1], "MN")
-            cur.execute(SQL, data)
+            if not venue_exists(clean_venues[y], conn):
+                SQL = "INSERT INTO lmn_venue (name, city, state) VALUES (%s, %s, %s)"
+                data = (clean_venues[y][0], clean_venues[y][1], "MN")
+                cur.execute(SQL, data)
 
         print("Venues added successfully")
 
