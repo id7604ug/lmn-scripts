@@ -131,7 +131,7 @@ def main():
             clean_venues.append(venues[a])
 
     try:
-        conn = psycopg2.connect("dbname=" + os.environ['POSTGRES_LMNOP_DATABASE'] + " user='lmnop' host=" = os.environ['POSTGRES_LMNOP_HOST'] + " password=" + os.environ['POSTGRES_LMNOP_USER_PASSWORD'])
+        conn = psycopg2.connect("dbname=" + os.environ['POSTGRES_LMNOP_DATABASE'] + " user='lmnop' host=" + os.environ['POSTGRES_LMNOP_HOST'] + " password=" + os.environ['POSTGRES_LMNOP_USER_PASSWORD'])
         conn.autocommit = True
         cur = conn.cursor()
 
